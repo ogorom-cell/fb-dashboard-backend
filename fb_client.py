@@ -108,29 +108,33 @@ def get_page_token(user_token: str, page_id: str) -> str:
 
 
 def get_page_insights(page_token: str, page_id: str, since: str, until: str, period: str = "day") -> dict:
-    # page_fans only works with period=lifetime; request it separately
-    day_metrics = [
-        "page_fan_adds",
-        "page_impressions",
-        "page_impressions_unique",
-        "page_post_engagements",
-        "page_video_views",
+    # Request metrics in small groups so a bad metric doesn't block the rest
+    day_metric_groups = [
+        ["page_impressions", "page_impressions_unique"],
+        ["page_fan_adds"],
+        ["page_post_engagements"],
+        ["page_video_views"],
     ]
-    resp = httpx.get(
-        f"{BASE}/{page_id}/insights",
-        params={
-            "metric": ",".join(day_metrics),
-            "period": period,
-            "since": since,
-            "until": until,
-            "access_token": page_token,
-        },
-        timeout=30,
-    )
-    resp.raise_for_status()
-    result = resp.json()
+    all_data: list = []
+    for group in day_metric_groups:
+        try:
+            resp = httpx.get(
+                f"{BASE}/{page_id}/insights",
+                params={
+                    "metric": ",".join(group),
+                    "period": period,
+                    "since": since,
+                    "until": until,
+                    "access_token": page_token,
+                },
+                timeout=30,
+            )
+            if resp.status_code == 200:
+                all_data.extend(resp.json().get("data", []))
+        except Exception:
+            pass
 
-    # Fetch total fan count separately (lifetime metric)
+    # page_fans requires period=lifetime
     try:
         fans_resp = httpx.get(
             f"{BASE}/{page_id}/insights",
@@ -142,12 +146,11 @@ def get_page_insights(page_token: str, page_id: str, since: str, until: str, per
             timeout=15,
         )
         if fans_resp.status_code == 200:
-            fans_data = fans_resp.json().get("data", [])
-            result["data"] = result.get("data", []) + fans_data
+            all_data.extend(fans_resp.json().get("data", []))
     except Exception:
         pass
 
-    return result
+    return {"data": all_data}
 
 
 def get_page_posts(page_token: str, page_id: str, limit: int = 20) -> list[dict]:
