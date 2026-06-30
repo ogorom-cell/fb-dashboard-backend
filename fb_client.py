@@ -6,7 +6,7 @@ from config import settings
 BASE = f"https://graph.facebook.com/{settings.FB_API_VERSION}"
 AUTH_URL = "https://www.facebook.com/dialog/oauth"
 TOKEN_URL = f"https://graph.facebook.com/{settings.FB_API_VERSION}/oauth/access_token"
-SCOPES = "pages_show_list,pages_read_engagement,read_insights"
+SCOPES = "pages_show_list,pages_read_engagement,read_insights,business_management"
 
 
 def build_auth_url(state: str) -> str:
@@ -52,13 +52,50 @@ def get_me(token: str) -> dict:
 
 
 def get_pages(user_token: str) -> list[dict]:
-    """Return all pages the user admins, each with its own page access token."""
-    resp = httpx.get(f"{BASE}/me/accounts", params={
-        "fields": "id,name,category,fan_count,picture{url},access_token",
-        "access_token": user_token,
-    }, timeout=15)
-    resp.raise_for_status()
-    return resp.json().get("data", [])
+    """Return all pages the user can access, including Business Manager pages."""
+    seen: set[str] = set()
+    pages: list[dict] = []
+
+    # Direct page roles (/me/accounts)
+    try:
+        resp = httpx.get(f"{BASE}/me/accounts", params={
+            "fields": "id,name,category,fan_count,picture{url},access_token",
+            "access_token": user_token,
+        }, timeout=15)
+        resp.raise_for_status()
+        for p in resp.json().get("data", []):
+            if p["id"] not in seen:
+                seen.add(p["id"])
+                pages.append(p)
+    except Exception:
+        pass
+
+    # Business Manager pages
+    try:
+        biz_resp = httpx.get(f"{BASE}/me/businesses", params={
+            "fields": "id,name",
+            "access_token": user_token,
+        }, timeout=15)
+        if biz_resp.status_code == 200:
+            for biz in biz_resp.json().get("data", []):
+                biz_id = biz["id"]
+                for edge in ("owned_pages", "client_pages"):
+                    try:
+                        pr = httpx.get(f"{BASE}/{biz_id}/{edge}", params={
+                            "fields": "id,name,category,fan_count,picture{url},access_token",
+                            "access_token": user_token,
+                        }, timeout=15)
+                        if pr.status_code == 200:
+                            for p in pr.json().get("data", []):
+                                if p["id"] not in seen and p.get("access_token"):
+                                    seen.add(p["id"])
+                                    pages.append(p)
+                    except Exception:
+                        pass
+    except Exception:
+        pass
+
+    return pages
 
 
 def get_page_token(user_token: str, page_id: str) -> str:
