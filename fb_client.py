@@ -71,8 +71,8 @@ def get_page_token(user_token: str, page_id: str) -> str:
 
 
 def get_page_insights(page_token: str, page_id: str, since: str, until: str, period: str = "day") -> dict:
-    metrics = [
-        "page_fans",
+    # page_fans only works with period=lifetime; request it separately
+    day_metrics = [
         "page_fans_adds",
         "page_impressions",
         "page_reach",
@@ -82,7 +82,7 @@ def get_page_insights(page_token: str, page_id: str, since: str, until: str, per
     resp = httpx.get(
         f"{BASE}/{page_id}/insights",
         params={
-            "metric": ",".join(metrics),
+            "metric": ",".join(day_metrics),
             "period": period,
             "since": since,
             "until": until,
@@ -91,7 +91,26 @@ def get_page_insights(page_token: str, page_id: str, since: str, until: str, per
         timeout=30,
     )
     resp.raise_for_status()
-    return resp.json()
+    result = resp.json()
+
+    # Fetch total fan count separately (lifetime metric)
+    try:
+        fans_resp = httpx.get(
+            f"{BASE}/{page_id}/insights",
+            params={
+                "metric": "page_fans",
+                "period": "lifetime",
+                "access_token": page_token,
+            },
+            timeout=15,
+        )
+        if fans_resp.status_code == 200:
+            fans_data = fans_resp.json().get("data", [])
+            result["data"] = result.get("data", []) + fans_data
+    except Exception:
+        pass
+
+    return result
 
 
 def get_page_posts(page_token: str, page_id: str, limit: int = 20) -> list[dict]:
