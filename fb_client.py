@@ -157,7 +157,7 @@ def get_page_posts(page_token: str, page_id: str, limit: int = 20) -> list[dict]
     resp = httpx.get(
         f"{BASE}/{page_id}/posts",
         params={
-            "fields": "id,message,story,created_time,full_picture,permalink_url,type",
+            "fields": "id,message,story,created_time,permalink_url,attachments{media_type,title}",
             "limit": limit,
             "access_token": page_token,
         },
@@ -171,7 +171,7 @@ def get_page_posts(page_token: str, page_id: str, limit: int = 20) -> list[dict]
             ins = httpx.get(
                 f"{BASE}/{post['id']}/insights",
                 params={
-                    "metric": "post_impressions,post_reach,post_engaged_users",
+                    "metric": "post_impressions_unique,post_engaged_users,post_reactions_like_total",
                     "access_token": page_token,
                 },
                 timeout=10,
