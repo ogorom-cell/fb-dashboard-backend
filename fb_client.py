@@ -110,9 +110,9 @@ def get_page_token(user_token: str, page_id: str) -> str:
 def get_page_insights(page_token: str, page_id: str, since: str, until: str, period: str = "day") -> dict:
     # page_fans only works with period=lifetime; request it separately
     day_metrics = [
-        "page_fans_adds",
+        "page_fan_adds",
         "page_impressions",
-        "page_reach",
+        "page_impressions_unique",
         "page_post_engagements",
         "page_video_views",
     ]
