@@ -10,7 +10,7 @@ def utcnow():
 
 
 class User(Base):
-    __tablename__ = "users"
+    __tablename__ = "fb_users"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     fb_user_id = Column(String, unique=True, nullable=False)
