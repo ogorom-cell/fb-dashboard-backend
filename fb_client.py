@@ -173,7 +173,7 @@ def get_page_posts(page_token: str, page_id: str, limit: int = 20) -> list[dict]
             ins = httpx.get(
                 f"{BASE}/{post['id']}/insights",
                 params={
-                    "metric": "post_impressions_unique,post_engaged_users,post_reactions_like_total",
+                    "metric": "post_impressions_unique,post_engaged_users,post_reactions_like_total,post_video_views",
                     "access_token": page_token,
                 },
                 timeout=10,
