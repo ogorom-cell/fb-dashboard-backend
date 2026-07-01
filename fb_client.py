@@ -111,9 +111,11 @@ def get_page_insights(page_token: str, page_id: str, since: str, until: str, per
     # Request metrics in small groups so a bad metric doesn't block the rest
     day_metric_groups = [
         ["page_impressions", "page_impressions_unique"],
+        ["page_impressions_organic", "page_impressions_paid"],
         ["page_fan_adds"],
         ["page_post_engagements"],
         ["page_video_views"],
+        ["page_daily_video_ad_break_earnings", "page_daily_video_ad_break_ad_impressions"],
     ]
     all_data: list = []
     for group in day_metric_groups:
